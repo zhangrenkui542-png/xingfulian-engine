@@ -758,7 +758,7 @@ module Clacky
         # id returned by GET /api/config). Name-based override was removed:
         # a bare model name can't disambiguate between entries from different
         # providers (e.g. "deepseek-v4-pro" on DeepSeek direct vs its dsk-*
-        # alias on OpenClacky/Bedrock), and mutating current_model["model"]
+        # alias on the API gateway/Bedrock), and mutating current_model["model"]
         # kept the wrong api_key / base_url / api format, producing
         # "unknown model" errors at the provider.
         model_id_override = body["model_id"].to_s.strip
@@ -2043,7 +2043,7 @@ module Clacky
       # Returns 200 with skill list, or 403 when license is not activated.
       # If the remote API call fails, falls back to locally installed skills with a warning.
       # GET /api/store/skills
-      # Returns the public skill store catalog from the OpenClacky Cloud API.
+      # Returns the public skill store catalog from the Cloud API.
       # Requires an activated license — uses HMAC auth with scope: "store" to fetch
       # platform-wide published public skills (not filtered by the user's own skills).
       # Falls back to the hardcoded catalog when license is not activated or API is unavailable.
@@ -2329,18 +2329,19 @@ module Clacky
         })
       end
 
+
       # POST /api/version/upgrade
-      # Upgrades xingfulian gem from GitHub Releases (幸赋链自主发布通道).
-      # Checks GitHub API for latest release, downloads .gem asset, installs locally.
+      # Upgrades 幸赋链引擎 via GitHub Releases (gem install from release assets).
+      # Fully independent of openclacky.com, RubyGems, and OSS CDN.
       def api_upgrade_version(req, res)
-        json_response(res, 202, { ok: true, message: "升级已启动 — 从幸赋链 GitHub Releases 拉取" })
+        json_response(res, 202, { ok: true, message: "Upgrade started" })
 
         Thread.new do
           begin
             upgrade_via_github_releases
           rescue StandardError => e
             Clacky::Logger.error("[Upgrade] Exception: #{e.class}: #{e.message}\n#{e.backtrace.first(5).join("\n")}")
-            broadcast_all(type: "upgrade_log", line: "\n✗ 升级出错: #{e.message}\n")
+            broadcast_all(type: "upgrade_log", line: "\n✗ Error during upgrade: #{e.message}\n")
             broadcast_all(type: "upgrade_complete", success: false)
           end
         end
@@ -2459,103 +2460,130 @@ module Clacky
         false
       end
 
-      # Upgrade via GitHub Releases (幸赋链自主发布通道).
-      # Fetches latest release from github.com/zhangrenkui542-png/xingfulian-engine,
-      # downloads the .gem asset, and installs it.
+# upgrade_via_oss_cdn + fetch_oss_latest_version (lines 2467-2573)
+
+      # Upgrade via GitHub Releases: fetch release assets, download .gem, gem install.
+      # Fully independent of openclacky.com, RubyGems.org, and OSS CDN.
       private def upgrade_via_github_releases
-        require "net/http"
-        require "uri"
-        require "json"
+        repo = "zhangrenkui542-png/xingfulian-engine"
+        api_url = "https://api.github.com/repos/#{repo}/releases/latest"
 
-        repo_api = "https://api.github.com/repos/zhangrenkui542-png/xingfulian-engine/releases/latest"
-        broadcast_all(type: "upgrade_log", line: "正在检查幸赋链引擎最新版本...\n")
-        Clacky::Logger.info("[Upgrade] Fetching #{repo_api}")
+        Clacky::Logger.info("[Upgrade] Fetching latest release from GitHub: #{api_url}")
+        broadcast_all(type: "upgrade_log", line: "Fetching latest release from GitHub Releases...\n")
 
-        # Step 1: Fetch latest release info from GitHub API
-        uri  = URI(repo_api)
-        http = Net::HTTP.new(uri.host, uri.port)
-        http.use_ssl      = true
-        http.open_timeout = 15
-        http.read_timeout = 15
-        req = Net::HTTP::Get.new(uri.request_uri)
-        req["Accept"]     = "application/vnd.github+json"
-        req["User-Agent"] = "xingfulian-engine-upgrader"
-
-        res = http.request(req)
-        unless res.is_a?(Net::HTTPSuccess)
-          broadcast_all(type: "upgrade_log", line: "✗ 无法访问 GitHub Releases (HTTP #{res.code})\n")
+        # Step 1: fetch release info
+        release = fetch_github_release(api_url)
+        unless release
+          broadcast_all(type: "upgrade_log", line: "✗ Failed to fetch release info from GitHub\n")
           broadcast_all(type: "upgrade_complete", success: false)
           return
         end
 
-        release = JSON.parse(res.body)
-        latest_tag = release["tag_name"]&.sub(/\Av/, "")  # strip leading "v"
-        unless latest_tag
-          broadcast_all(type: "upgrade_log", line: "✗ 无法解析最新版本号\n")
-          broadcast_all(type: "upgrade_complete", success: false)
-          return
-        end
-
-        broadcast_all(type: "upgrade_log", line: "最新版本: #{latest_tag} (当前: #{Clacky::VERSION})\n")
+        tag = release["tag_name"].to_s.gsub(/^v/, "")
+        broadcast_all(type: "upgrade_log", line: "Latest release: #{tag}\n")
 
         # Already up to date?
-        unless version_older?(Clacky::VERSION, latest_tag)
-          broadcast_all(type: "upgrade_log", line: "✓ 已经是最新版本 (#{Clacky::VERSION})\n")
+        unless version_older?(Clacky::VERSION, tag)
+          broadcast_all(type: "upgrade_log", line: "✓ Already at latest version (#{Clacky::VERSION})\n")
           broadcast_all(type: "upgrade_complete", success: true)
           return
         end
 
-        # Step 2: Find .gem asset in release
-        gem_asset = release["assets"]&.find { |a| a["name"]&.end_with?(".gem") }
-        unless gem_asset
-          broadcast_all(type: "upgrade_log", line: "✗ 未找到 .gem 安装包\n")
-          broadcast_all(type: "upgrade_complete", success: false)
-          return
+        # Step 2: find .gem asset or construct URL
+        assets = release["assets"] || []
+        gem_asset = assets.find { |a| a["name"].to_s.end_with?(".gem") }
+        if gem_asset
+          gem_url = gem_asset["browser_download_url"]
+        else
+          gem_url = "https://github.com/#{repo}/releases/download/v#{tag}/xingfulian-#{tag}.gem"
         end
 
-        gem_url  = gem_asset["browser_download_url"]
-        gem_file = "/tmp/xingfulian-#{latest_tag}.gem"
-        broadcast_all(type: "upgrade_log", line: "正在下载 xingfulian-#{latest_tag}.gem...\n")
+        gem_file = "/tmp/xingfulian-#{tag}.gem"
+        broadcast_all(type: "upgrade_log", line: "Downloading xingfulian-#{tag}.gem ...\n")
+        Clacky::Logger.info("[Upgrade] Downloading #{gem_url}")
 
         dl_out, dl_exit = run_shell("curl -fsSL '#{gem_url}' -o '#{gem_file}'", timeout: 300)
         unless dl_exit&.zero?
-          broadcast_all(type: "upgrade_log", line: "✗ 下载失败: #{dl_out}\n")
+          broadcast_all(type: "upgrade_log", line: "✗ Download failed: #{dl_out}\n")
           broadcast_all(type: "upgrade_complete", success: false)
           return
         end
 
-        # Step 3: Install the downloaded .gem
-        broadcast_all(type: "upgrade_log", line: "正在安装...\n")
-        output, exit_code = run_shell("gem install '#{gem_file}' --no-document", timeout: 600)
+        # Step 3: install
+        cmd = "gem install '#{gem_file}' --no-document"
+        broadcast_all(type: "upgrade_log", line: "Installing...\n")
+        Clacky::Logger.info("[Upgrade] Running: #{cmd}")
+
+        output, exit_code = run_shell(cmd, timeout: 600)
         success = exit_code&.zero? || false
 
         broadcast_all(type: "upgrade_log", line: output)
-
-        if success
-          Clacky::Logger.info("[Upgrade] Success!")
-          broadcast_all(type: "upgrade_log", line: "\n✓ 升级成功！请重启服务以应用新版本。\n")
-          broadcast_all(type: "upgrade_complete", success: true)
-        else
-          Clacky::Logger.warn("[Upgrade] Failed.")
-          broadcast_all(type: "upgrade_log", line: "\n✗ 升级失败。请手动从 GitHub Releases 下载安装。\n")
-          broadcast_all(type: "upgrade_complete", success: false)
-        end
+        finish_upgrade(success, fallback_hint: "gem install xingfulian")
       ensure
         File.delete(gem_file) if gem_file && File.exist?(gem_file) rescue nil
       end
 
-      # Compare two semver-ish version strings. Returns true if current < latest.
-      private def version_older?(current, latest)
-        current_parts = current.to_s.split(".").map { |p| p.to_i }
-        latest_parts  = latest.to_s.split(".").map { |p| p.to_i }
-        max_len = [current_parts.length, latest_parts.length].max
-        max_len.times do |i|
-          c = current_parts[i] || 0
-          l = latest_parts[i]  || 0
-          return true  if c < l
-          return false if c > l
+      # Fetch GitHub release JSON. Returns nil on any error.
+      private def fetch_github_release(url)
+        require "net/http"
+        require "json"
+        uri  = URI(url)
+        http = Net::HTTP.new(uri.host, uri.port)
+        http.use_ssl      = true
+        http.open_timeout = 15
+        http.read_timeout = 15
+        req = Net::HTTP::Get.new(uri)
+        req["Accept"] = "application/vnd.github+json"
+        req["User-Agent"] = "xingfulian-engine"
+        if (token = ENV["GITHUB_TOKEN"].to_s.strip) && !token.empty?
+          req["Authorization"] = "Bearer #{token}"
         end
-        false # equal
+        res = http.request(req)
+        return nil unless res.is_a?(Net::HTTPSuccess)
+        JSON.parse(res.body)
+      rescue StandardError => e
+        Clacky::Logger.warn("[Upgrade] fetch_github_release error: #{e.message}")
+        nil
+      end
+
+      # Broadcast final upgrade result with appropriate log message.
+      #
+      # Defensive post-check: if `run_shell` reported failure but the gem
+      # is in fact now installed at the latest version, reverse the verdict.
+      # This guards against false negatives from the Terminal idle-poll
+      private def finish_upgrade(success, fallback_hint: "gem install xingfulian")
+        if !success && gem_actually_upgraded?
+          Clacky::Logger.warn("[Upgrade] run_shell reported failure, but installed version matches latest — treating as success.")
+          broadcast_all(type: "upgrade_log", line: "\n(Verified: the new version is installed — reclassifying as success.)\n")
+          success = true
+        end
+
+        if success
+          Clacky::Logger.info("[Upgrade] Success!")
+          broadcast_all(type: "upgrade_log", line: "\n✓ Upgrade successful! Please restart the server to apply the new version.\n")
+          broadcast_all(type: "upgrade_complete", success: true)
+        else
+          Clacky::Logger.warn("[Upgrade] Failed.")
+          broadcast_all(type: "upgrade_log", line: "\n✗ Upgrade failed. Please try manually: #{fallback_hint}\n")
+          broadcast_all(type: "upgrade_complete", success: false)
+        end
+      end
+
+
+      # Check whether the latest published version of xingfulian is already
+      # installed locally. Used as a post-upgrade sanity check so a flaky
+      # run_shell result doesn't mask a successful install.
+      # Returns false on any error (conservative — don't fabricate success).
+      private def gem_actually_upgraded?
+        latest = fetch_latest_version_from_github
+        return false unless latest
+
+        out, exit_code = run_shell("gem list xingfulian -i -v #{latest}", timeout: 30)
+        return false unless exit_code&.zero?
+        out.to_s.strip.downcase == "true"
+      rescue StandardError => e
+        Clacky::Logger.warn("[Upgrade] gem_actually_upgraded? error: #{e.message}")
+        false
       end
 
       # POST /api/restart
@@ -2600,7 +2628,8 @@ module Clacky
         exec(shell, "-l", "-c", cmd_string)
       end
 
-      # Fetch the latest gem version from GitHub Releases, with a 1-hour in-memory cache.
+      # Fetch the latest gem version using `gem list -r`, with a 1-hour in-memory cache.
+      # Uses Terminal (PTY + login shell) so rbenv/mise shims and gem mirrors work correctly.
       private def fetch_latest_version_cached
         @version_mutex.synchronize do
           now = Time.now
@@ -2610,7 +2639,7 @@ module Clacky
         end
 
         # Fetch outside the mutex to avoid blocking other requests
-        latest = fetch_latest_version_from_github
+        latest = fetch_latest_version_from_gem
 
         @version_mutex.synchronize do
           @version_cache = { latest: latest, checked_at: Time.now }
@@ -2619,45 +2648,38 @@ module Clacky
         latest
       end
 
-      # Query the latest xingfulian version from GitHub Releases API.
-      # Falls back to `gem list -r xingfulian` if GitHub is unreachable.
-      private def fetch_latest_version_from_github
-        fetch_latest_version_from_github_api || fetch_latest_version_from_gem_command
+
+      # Query the latest xingfulian version from GitHub Releases.
+      private def fetch_latest_version_from_gem
+        fetch_latest_version_from_github
       end
 
-      # Try GitHub Releases API — fast and always up-to-date.
-      # Returns nil if the request fails or times out.
-      private def fetch_latest_version_from_github_api
+      # Fetch latest version tag from GitHub Releases API.
+      # Returns version string or nil.
+      private def fetch_latest_version_from_github
         require "net/http"
         require "json"
 
-        uri      = URI("https://api.github.com/repos/zhangrenkui542-png/xingfulian-engine/releases/latest")
-        http     = Net::HTTP.new(uri.host, uri.port)
-        http.use_ssl     = true
-        http.open_timeout = 8
+        repo = "zhangrenkui542-png/xingfulian-engine"
+        uri  = URI("https://api.github.com/repos/#{repo}/releases/latest")
+        http = Net::HTTP.new(uri.host, uri.port)
+        http.use_ssl      = true
+        http.open_timeout = 10
         http.read_timeout = 10
-        req = Net::HTTP::Get.new(uri.request_uri)
-        req["Accept"]     = "application/vnd.github+json"
+
+        req = Net::HTTP::Get.new(uri)
+        req["Accept"] = "application/vnd.github+json"
         req["User-Agent"] = "xingfulian-engine"
+        if (token = ENV["GITHUB_TOKEN"].to_s.strip) && !token.empty?
+          req["Authorization"] = "Bearer #{token}"
+        end
 
         res = http.request(req)
         return nil unless res.is_a?(Net::HTTPSuccess)
 
         data = JSON.parse(res.body)
-        tag = data["tag_name"].to_s.sub(/\Av/, "").strip
+        tag = data["tag_name"].to_s.gsub(/^v/, "").strip
         tag.empty? ? nil : tag
-      rescue StandardError
-        nil
-      end
-
-      # Fall back to `gem list -r xingfulian` via login shell.
-      # Output format: "xingfulian (2.0.0.xingfulian)"
-      private def fetch_latest_version_from_gem_command
-        out, exit_code = run_shell("gem list -r xingfulian", timeout: 30)
-        return nil unless exit_code&.zero?
-
-        match = out.match(/^xingfulian\s+\(([^)]+)\)/)
-        match ? match[1].strip : nil
       rescue StandardError
         nil
       end
@@ -4476,7 +4498,7 @@ module Clacky
       end
 
       # Auto-packages the named skill directory into a ZIP and uploads it to the
-      # OpenClacky cloud. No file picker is required — the server finds the skill
+      # The cloud. No file picker is required — the server finds the skill
       # directory, zips it, and streams the ZIP to the cloud API.
       #
       # Response: { ok: true, name: } on success, { ok: false, error: } on failure.
@@ -5932,7 +5954,7 @@ module Clacky
         # Apply model override BEFORE creating the client — otherwise the
         # client is built from the default model entry and may route through
         # the wrong provider (e.g. sending a deepseek-v4-pro request to the
-        # Bedrock-format OpenClacky endpoint, which replies "unknown model").
+        # Bedrock-format endpoint, which replies "unknown model").
         #
         # We use switch_model_by_id (not a name-based rewrite of
         # current_model["model"]) because:
