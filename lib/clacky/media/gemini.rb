@@ -17,14 +17,14 @@ module Clacky
     # candidates[].content.parts[].inlineData response schema. Completely
     # different from the OpenAI /v1/images/generations contract.
     #
-    # Today every shipping path (openclacky gateway, OpenRouter) wraps Gemini
+    # Today every shipping path (AI gateway, OpenRouter) wraps Gemini
     # behind an OpenAI-compatible facade, so OpenAICompat handles them and
     # this class is intentionally a stub. We surface a clear error rather
     # than silently 404 against Google's actual host.
     class Gemini < Base
       def generate_image(prompt:, aspect_ratio: "landscape", output_dir: nil, **_kwargs)
         error_response(
-          error: "Direct Google AI Studio (generativelanguage.googleapis.com) image generation is not yet supported. Use the openclacky or OpenRouter gateway instead — set base_url to https://api.openclacky.com or https://openrouter.ai/api/v1 and pick a Gemini image model (e.g. or-gemini-3-pro-image, google/gemini-3-pro-image-preview).",
+          error: "Direct Google AI Studio (generativelanguage.googleapis.com) image generation is not yet supported. Use the OpenRouter gateway instead — set base_url to https://openrouter.ai/api/v1 and pick a Gemini image model (e.g. google/gemini-3-pro-image-preview).",
           error_type: "not_implemented",
           provider: "gemini-direct",
           prompt: prompt,
@@ -34,7 +34,7 @@ module Clacky
 
       def generate_video(prompt:, aspect_ratio: "landscape", duration_seconds: nil, output_dir: nil, **_kwargs)
         video_error_response(
-          error: "Direct Google AI Studio video generation is not supported. Use the openclacky gateway (base_url https://api.openclacky.com) with a video model such as or-veo-3-1.",
+          error: "Direct Google AI Studio video generation is not supported. Use OpenRouter (base_url https://openrouter.ai/api/v1) with a compatible video model.",
           error_type: "not_implemented",
           provider: "gemini-direct",
           prompt: prompt,

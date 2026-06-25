@@ -153,7 +153,7 @@ module Clacky
         result = request("initialize", {
           protocolVersion: PROTOCOL_VERSION,
           capabilities:    { tools: {} },
-          clientInfo:      { name: "openclacky", version: Clacky::VERSION }
+          clientInfo:      { name: "xingfulian", version: Clacky::VERSION }
         }, timeout: INIT_TIMEOUT)
 
         @server_info = result["serverInfo"]

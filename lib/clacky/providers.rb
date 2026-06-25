@@ -24,7 +24,7 @@ module Clacky
     #   "api" is used. Used so e.g. OpenRouter can keep "openai-responses" as
     #   its default while routing Claude models through the native Anthropic
     #   endpoint (which preserves cache_control fidelity).
-    PRESETS = {
+        PRESETS = {
       "openrouter" => {
         "name" => "OpenRouter",
         "base_url" => "https://openrouter.ai/api/v1",
