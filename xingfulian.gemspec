@@ -28,7 +28,7 @@ Gem::Specification.new do |spec|
 
   spec.required_ruby_version = ">= 2.6.0"
 
-  spec.add_runtime_dependency "faraday",           "~> 1.0"
+  spec.add_runtime_dependency "faraday",           "~> 2.0"
   spec.add_runtime_dependency "faraday-multipart", "~> 1.0"
   spec.add_runtime_dependency "thor",              "~> 1.0"
   spec.add_runtime_dependency "tty-prompt",        "~> 0.23"
