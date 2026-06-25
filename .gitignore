@@ -1,5 +1,8 @@
-.DS_Store
+# 幸赋链引擎 — .gitignore
 *.gem
-/tmp/
-.bundle/
-vendor/bundle/
+.DS_Store
+node_modules/
+tmp/
+.gate_state/
+.clacky/
+*.log
