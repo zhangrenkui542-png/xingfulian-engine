@@ -14,13 +14,13 @@ Gem::Specification.new do |spec|
   spec.license       = "MIT"
 
   spec.metadata = {
-    "homepage_uri"      => "https://xingfulian.cn",
-    "source_code_uri"   => "https://github.com/zhangrenkui542-png/xingfulian-engine",
-    "changelog_uri"     => "https://github.com/zhangrenkui542-png/xingfulian-engine/blob/main/CHANGELOG.md",
+    "homepage_uri"    => "https://xingfulian.cn",
+    "source_code_uri" => "https://github.com/zhangrenkui542-png/xingfulian-engine",
+    "changelog_uri"   => "https://github.com/zhangrenkui542-png/xingfulian-engine/blob/main/CHANGELOG.md",
   }
 
-  spec.files = Dir["{bin,lib,sig}/**/*", "LICENSE.txt", "README.md", "CHANGELOG.md"] +
-               Dir["*.md", "*.txt"].reject { |f| f.end_with?(".gemspec") }
+  spec.files = Dir["{bin,lib,sig}/**/*", "LICENSE.txt", "README.md", "CHANGELOG.md", "CODE_OF_CONDUCT.md"] +
+               Dir["*.md"]
 
   spec.bindir        = "bin"
   spec.executables   = ["xingfulian"]
@@ -28,7 +28,7 @@ Gem::Specification.new do |spec|
 
   spec.required_ruby_version = ">= 2.6.0"
 
-  spec.add_runtime_dependency "faraday",           "~> 2.0"
+  spec.add_runtime_dependency "faraday",           ">= 1.0"
   spec.add_runtime_dependency "faraday-multipart", "~> 1.0"
   spec.add_runtime_dependency "thor",              "~> 1.0"
   spec.add_runtime_dependency "tty-prompt",        "~> 0.23"
