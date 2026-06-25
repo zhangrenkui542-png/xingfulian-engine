@@ -9,7 +9,7 @@
 # ~/.clacky/card_token (used for future updates/deletes).
 #
 # Environment:
-#   CLACKY_LICENSE_SERVER — platform base URL override (default: https://www.openclacky.com)
+#   CLACKY_LICENSE_SERVER — platform base URL override (default: https://xingfulian.cn)
 #   CARD_HMAC_SECRET      — shared secret (default matches platform default)
 
 require "net/http"
@@ -24,7 +24,7 @@ require "fileutils"
 
 # Primary CDN-accelerated endpoint.
 # Fallback bypasses EdgeOne and is used when the primary times out or errors.
-PRIMARY_HOST  = ENV.fetch("CLACKY_LICENSE_SERVER", "https://www.openclacky.com")
+PRIMARY_HOST  = ENV.fetch("CLACKY_LICENSE_SERVER", "https://xingfulian.cn")
 FALLBACK_HOST = "https://openclacky.up.railway.app"
 # When the env override is set we use only that host (dev/test mode).
 API_HOSTS     = ENV["CLACKY_LICENSE_SERVER"] ? [PRIMARY_HOST] : [PRIMARY_HOST, FALLBACK_HOST]
