@@ -1,4 +1,1 @@
-module Clacky
-  VERSION: String
-  # See the writing guide of rbs: https://github.com/ruby/rbs#guides
-end
+bW9kdWxlIENsYWNreQogIFZFUlNJT046IFN0cmluZwogICMgU2VlIHRoZSB3cml0aW5nIGd1aWRlIG9mIHJiczogaHR0cHM6Ly9naXRodWIuY29tL3J1YnkvcmJzI2d1aWRlcwplbmQK
