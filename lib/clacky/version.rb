@@ -1,5 +1,1 @@
-# frozen_string_literal: true
-
-module Clacky
-  VERSION = "2.0.0.xingfulian"
-end
+IyBmcm96ZW5fc3RyaW5nX2xpdGVyYWw6IHRydWUKCm1vZHVsZSBDbGFja3kKICBWRVJTSU9OID0gIjIuMC4wLnhpbmdmdWxpYW4iCmVuZAo=

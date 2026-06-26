@@ -1,8 +1,1 @@
-#!/usr/bin/env ruby
-# frozen_string_literal: true
-
-$LOAD_PATH.unshift File.expand_path("../lib", __dir__)
-
-require "clacky"
-
-Clacky::CLI.start(ARGV)
+IyEvdXNyL2Jpbi9lbnYgcnVieQojIGZyb3plbl9zdHJpbmdfbGl0ZXJhbDogdHJ1ZQoKJExPQURfUEFUSC51bnNoaWZ0IEZpbGUuZXhwYW5kX3BhdGgoIi4uL2xpYiIsIF9fZGlyX18pCgpyZXF1aXJlICJjbGFja3kiCgpDbGFja3k6OkNMSS5zdGFydChBUkdWKQo=

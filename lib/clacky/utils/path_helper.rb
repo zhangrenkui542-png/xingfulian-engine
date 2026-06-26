@@ -1,15 +1,1 @@
-# frozen_string_literal: true
-
-module Clacky
-  module Utils
-    module PathHelper
-      # Safely get basename from path, return placeholder if path is nil
-      def self.safe_basename(path, placeholder: "?")
-        return placeholder if path.nil? || path.to_s.empty?
-        File.basename(path.to_s)
-      rescue StandardError
-        placeholder
-      end
-    end
-  end
-end
+IyBmcm96ZW5fc3RyaW5nX2xpdGVyYWw6IHRydWUKCm1vZHVsZSBDbGFja3kKICBtb2R1bGUgVXRpbHMKICAgIG1vZHVsZSBQYXRoSGVscGVyCiAgICAgICMgU2FmZWx5IGdldCBiYXNlbmFtZSBmcm9tIHBhdGgsIHJldHVybiBwbGFjZWhvbGRlciBpZiBwYXRoIGlzIG5pbAogICAgICBkZWYgc2VsZi5zYWZlX2Jhc2VuYW1lKHBhdGgsIHBsYWNlaG9sZGVyOiAiPyIpCiAgICAgICAgcmV0dXJuIHBsYWNlaG9sZGVyIGlmIHBhdGgubmlsPyB8fCBwYXRoLnRvX3MuZW1wdHk/CiAgICAgICAgRmlsZS5iYXNlbmFtZShwYXRoLnRvX3MpCiAgICAgIHJlc2N1ZSBTdGFuZGFyZEVycm9yCiAgICAgICAgcGxhY2Vob2xkZXIKICAgICAgZW5kCiAgICBlbmQKICBlbmQKZW5kCg==

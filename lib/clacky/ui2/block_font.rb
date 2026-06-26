@@ -1,10 +1,1 @@
-# frozen_string_literal: true
-
-require_relative "../block_font"
-
-module Clacky
-  module UI2
-    # Alias for backward compatibility — BlockFont now lives at Clacky::BlockFont.
-    BlockFont = Clacky::BlockFont
-  end
-end
+IyBmcm96ZW5fc3RyaW5nX2xpdGVyYWw6IHRydWUKCnJlcXVpcmVfcmVsYXRpdmUgIi4uL2Jsb2NrX2ZvbnQiCgptb2R1bGUgQ2xhY2t5CiAgbW9kdWxlIFVJMgogICAgIyBBbGlhcyBmb3IgYmFja3dhcmQgY29tcGF0aWJpbGl0eSDigJQgQmxvY2tGb250IG5vdyBsaXZlcyBhdCBDbGFja3k6OkJsb2NrRm9udC4KICAgIEJsb2NrRm9udCA9IENsYWNreTo6QmxvY2tGb250CiAgZW5kCmVuZAo=
